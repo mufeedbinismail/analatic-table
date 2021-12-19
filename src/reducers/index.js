@@ -10,13 +10,13 @@ const reducers = (filters, action) => {
       };
 
     case actionType.CHANGED_COL_VISIBILITY:
-      const visibility = {...filters.visibility};
-      if (visibility[action.payload.key] !== undefined) {
-          visibility[action.payload.key] = !visibility[action.payload.key];
+      const isVisible = {...filters.isVisible};
+      if (isVisible[action.payload.key] !== undefined) {
+          isVisible[action.payload.key] = !isVisible[action.payload.key];
       }
       return {
         ...filters,
-        visibility,
+        isVisible,
       };
 
     case actionType.CHANGED_COL_ORDER:

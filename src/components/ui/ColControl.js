@@ -1,6 +1,6 @@
 import { classNames } from "../../utils";
 
-const ColControl = ({ text, key, ...props }) => {
+const ColControl = ({ text, id, ...props }) => {
 
 const classes = classNames(
     props.className,
@@ -10,7 +10,7 @@ const classes = classNames(
     }
 )
 
-  return <button value={key} onClick={props.onClick} className={classes}>{text}</button>;
+  return <button data-key={id} onClick={props.onClick} className={classes}>{text}</button>;
 };
 
 export default ColControl;

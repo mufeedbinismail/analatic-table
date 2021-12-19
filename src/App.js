@@ -13,7 +13,7 @@ import ClearFix from "./components/ui/ClearFix";
 import ButtonBadge from "./components/ui/ButtonBadge";
 import Collapse from "./components/ui/Collapse";
 import ColControl from "./components/ui/ColControl";
-import Table from "./components/ui/Table";
+import Table from "./components/ui/table";
 
 function App() {
 
@@ -40,7 +40,7 @@ function App() {
       'fill_rate',
       'ctr'
     ],
-    visibility: {
+    isVisible: {
       'requests': true,
       'responses': false,
       'revenue': true,
@@ -60,7 +60,7 @@ function App() {
     .then(res => setApps(res.data))
     .catch(err => console.log(err));
 
-    api.getReport('2021-05-01', '2021-05-03')
+    api.getReport(filters.startDate, filters.endDate)
       .then(res => setAnalytics(res.data))
       .catch(err => console.log(err));
   }, [reload]);
@@ -72,7 +72,7 @@ function App() {
           'en-GB',
           {day: 'numeric', month: 'long', year: 'numeric'}
         )
-      ).format,
+      ),
       formatCurrency: (
         new Intl.NumberFormat(
           'en-US',
@@ -119,15 +119,21 @@ function App() {
           key: 'date',
           title: 'Date',
           getData: row => row.date,
-          formatData: data => (data && formatters.formatDate(new Date(data))),
+          formatData: data => {
+            const dt = new Date(data);
+            return formatters.formatDate
+              .formatToParts(dt)
+              .map(({type, value}) => type == 'literal' ? '-' : value)
+              .join('');
+          },
           getSummary: aggregate.count,
           formatSummary: formatters.formatCount
         },
         {
           key: 'app_name',
           title: 'App',
-          getData: row => apps.find(app => app.app_id == row.app_id),
-          formatData: data => (<span><IoPieChartOutline color="orange" size="1.25rem" />{data}</span>),
+          getData: row => apps.find(app => app.app_id == row.app_id)?.app_name,
+          formatData: data => (<span><IoPieChartOutline color="orange" size="1.25rem" className="me-2"/>{data}</span>),
           getSummary: aggregate.count,
           formatSummary: formatters.formatCount
         },
@@ -203,12 +209,13 @@ function App() {
 
         <Collapse visible={optionsExpanded} className="mb-4 p-3 rounded border">
           <h4 className="mb-3">Dimensions and Metrics</h4>
-          {columns.map(col => (
+          {columns.map(({title, key}) => (
             <ColControl
-              text={col.title}
-              key={col.key}
+              text={title}
+              key={key}
+              id={key}
               onClick={actions.toggleVisibility(dispatch)}
-              active={filters.visibility[col.key] === undefined || filters.visibility[col.key]} />
+              active={undefined === filters.isVisible[key] || filters.isVisible[key]} />
           ))}
         </Collapse>
       </IconContextProvider>
