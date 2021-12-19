@@ -1,0 +1,18 @@
+@use "sass:map";
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap');
+@import './custom-bootstrap.scss';
+
+.col-control {
+    display: inline-block;
+    width: 170px;
+    border: $border-width solid $border-color;
+    border-radius: $border-radius;
+    padding: map.get($spacers, 1) map.get($spacers, 2);
+    margin-right: map.get($spacers, 3);
+    margin-bottom: map.get($spacers, 2);
+
+    &.active {
+      border-left: map.get($border-widths, 5) solid $primary;
+    }
+}
