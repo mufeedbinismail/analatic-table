@@ -20,10 +20,10 @@ const reducers = (filters, action) => {
       };
 
     case actionType.CHANGED_COL_ORDER:
-      const order = filters.payload.order;
+      const order = action.payload.order;
       return {
         ...filters,
-        order,
+        colOrder: order,
       };
 
     default:

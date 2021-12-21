@@ -1,16 +1,30 @@
+import { Draggable } from "react-beautiful-dnd";
 import { classNames } from "../../utils";
 
-const ColControl = ({ text, id, ...props }) => {
+const ColControl = ({ text, id, index, ...props }) => (
+  <Draggable draggableId={id} index={index}>
+    {(provided, snapshot) => {
+      const classes = classNames(props.className, {
+        "col-control": true,
+        "is-dragging": snapshot.isDragging,
+        "un-hidable": props.active === undefined,
+        active: props.active,
+      });
 
-const classes = classNames(
-    props.className,
-    {
-        'col-control': true,
-        'active': props.active
-    }
-)
-
-  return <button data-key={id} onClick={props.onClick} className={classes}>{text}</button>;
-};
+      return (
+        <div
+          ref={provided.innerRef}
+          data-key={id}
+          onClick={props.onClick}
+          className={classes}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+        >
+          {text}
+        </div>
+      );
+    }}
+  </Draggable>
+);
 
 export default ColControl;

@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import Thead from "./Thead";
 
-const Table = ({columns, data, filters}) => {
+const Table = ({columns, data, colOrder, isVisible}) => {
 
+  const colKeys = Object.keys(columns);
   // read the actual state of the data
   const state = useMemo(() => {
     // initialise the grouped object
-    const grouped = columns.reduce((obj, {key}) => {
+    const grouped = colKeys.reduce((obj, key) => {
       obj[key] = [];
 
       return obj;
@@ -16,8 +17,8 @@ const Table = ({columns, data, filters}) => {
     const _data = data.map((row) => {
       const _row = {};
 
-      columns.forEach(({key, getData}) => {
-        _row[key] = getData(row);
+      colKeys.forEach((key) => {
+        _row[key] = columns[key].getData(row);
         grouped[key].push(_row[key]);
       });
 
@@ -25,8 +26,8 @@ const Table = ({columns, data, filters}) => {
     });
 
     // get the summary
-    const summary = columns.reduce((obj, {key, getSummary}) => {
-      obj[key] = getSummary(grouped[key]);
+    const summary = colKeys.reduce((obj, key) => {
+      obj[key] = columns[key].getSummary(grouped[key]);
 
       return obj;
     }, {});
@@ -38,16 +39,9 @@ const Table = ({columns, data, filters}) => {
     }
   }, [columns, data]);
 
-  // index the columns configuration using the key
-  const _columns = columns.reduce((obj, col) => {
-    obj[col.key] = col;
-
-    return obj;
-  }, {});
-
   // get the visible columns in the proper order
-  const orderedVisibleColumns = filters.order.reduce((arr, key) => {
-    if(filters.isVisible[key] === undefined || filters.isVisible[key]) {
+  const orderedVisibleColumns = colOrder.reduce((arr, key) => {
+    if(isVisible[key] === undefined || isVisible[key]) {
       arr.push(key);
     }
 
@@ -62,8 +56,8 @@ const Table = ({columns, data, filters}) => {
             {orderedVisibleColumns.map(key => (
               <Thead
                 key={key}
-                title={_columns[key].title}
-                value={_columns[key].formatSummary(state.summary[key])} />
+                title={columns[key].title}
+                value={columns[key].formatSummary(state.summary[key])} />
             ))}
           </tr>
         </thead>
@@ -72,7 +66,7 @@ const Table = ({columns, data, filters}) => {
             state.data.map((row, idx) => (
               <tr key={idx}>
                 {orderedVisibleColumns.map(key => (
-                  <td key={key}>{_columns[key].formatData(row[key])}</td>
+                  <td key={key}>{columns[key].formatData(row[key])}</td>
                 ))}
               </tr>
             ))
