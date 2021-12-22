@@ -1,108 +1,58 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { IoPieChartOutline } from "react-icons/io5";
+import { useSearchParams } from "react-router-dom";
 
-// aggregate funtions
-const sum = arr => arr.reduce((prev, curr) => (prev + curr), 0);
-const count = arr => (arr.length || 0);
-const avg = arr => sum(arr) / (count(arr) + 1);
+import {
+  formatDate,
+  formatCurrency,
+  formatPercentage,
+  suffixNumber
+} from './formatters';
+import {
+  sum,
+  avg,
+  count
+} from './aggregates';
+import { invert, isDate } from "../utils";
 
-// formatters
-const formatCurrency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-}).format;
-
-const formatPercentage = new Intl.NumberFormat("en-US", {
-  style: "percent",
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2,
-}).format;
-
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-const formatDate = (dateString) => {
-  const dt = new Date(dateString);
-  return dateFormatter
-    .formatToParts(dt)
-    .map(({ type, value }) => (type == "literal" ? "-" : value))
-    .join("");
-};
-
-const formatDateRange = (startDate, endDate) => {
-  const dateFormatter = new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const startDateParts = dateFormatter.formatToParts(new Date(startDate));
-  const endDateParts = dateFormatter.formatToParts(new Date(endDate));
-
-  return `${startDateParts[0].value} ${startDateParts[2].value} - ${endDateParts[0].value} ${endDateParts[2].value}, ${endDateParts[4].value}`;
+const initialColOrder = [
+  'date',
+  'appName',
+  'requests',
+  'responses',
+  'impressions',
+  'clicks',
+  'revenue',
+  'fillRate',
+  'ctr'
+];
+const initialColVisibility = {
+  requests: true,
+  responses: false,
+  revenue: true,
+  fillRate: true,
+  impressions: false,
+  clicks: true,
+  ctr: true
 }
-
-const suffixNumber = (number) => {
-  let _number = "" + number;
-  if (number >= 1000) {
-    const suffixes = ["", "K", "M", "B", "T"];
-    const suffixNum = Math.floor(("" + number).length / 3);
-
-    let shortValue = 0;
-    for (let precision = 2; precision >= 1; precision--) {
-      shortValue = parseFloat(
-        (suffixNum != 0
-          ? number / Math.pow(1000, suffixNum)
-          : number
-        ).toPrecision(precision)
-      );
-      var dotLessShortValue = (shortValue + "").replace(/[^a-zA-Z 0-9]+/g, "");
-      if (dotLessShortValue.length <= 2) {
-        break;
-      }
-    }
-
-    _number =
-      (shortValue % 1 != 0 ? shortValue.toFixed(1) : shortValue) +
-      suffixes[suffixNum];
-  }
-  return _number;
-};
-
 const initialFilters = {
   startDate: '2021-05-01',
   endDate: '2021-05-03',
-  colOrder: [
-    'date',
-    'appName',
-    'requests',
-    'responses',
-    'impressions',
-    'clicks',
-    'revenue',
-    'fillRate',
-    'ctr'
-  ],
-  isVisible: {
-    requests: true,
-    responses: false,
-    revenue: true,
-    fillRate: true,
-    impressions: false,
-    clicks: true,
-    ctr: true
-  }
+  colOrder: Array.from(initialColOrder),
+  isVisible: {...initialColVisibility}
 }
 
-const reorderArray = (arr, item, source, dest) => {
-  const newArr = Array.from(arr);
-  newArr.splice(source, 1);
-  newArr.splice(dest, 0, item);
+const colOrderMap = Array.from(initialColOrder)
+.reduce(
+  (acc, value, index) => ({...acc, [value]: index.toString(36)}),
+  {}
+);
+const colVisibilityMap = Object.keys(initialColVisibility)
+.reduce(
+  (acc, value, index) => ({...acc, [value]: 1 << index}),
+  {}
+)
 
-  return newArr;
-}
 
 const getColumnConfigurer = (apps) => {
   return () => ({
@@ -175,6 +125,100 @@ const getColumnConfigurer = (apps) => {
       formatSummary: formatPercentage,
     },
   });
-}
+};
 
-export {initialFilters, getColumnConfigurer, formatDateRange, reorderArray}
+const flattenFilters = (filters) => {
+  const _filters = {};
+
+  _filters.startDate = filters.startDate;
+  _filters.endDate = filters.endDate;
+  _filters.colOrder = filters.colOrder.reduce((acc, col) => (acc + colOrderMap[col]), "");
+
+  const isVisible = Object.keys(initialColVisibility)
+    .filter((col) => (filters.isVisible[col]))
+    .reduce((acc, col) => (acc | colVisibilityMap[col]), 0);
+  _filters.colVisible = String(isVisible);
+
+  return _filters;
+};
+
+const bloatFilters = (filters) => {
+  const _filters = {};
+
+  _filters.startDate = isDate(filters.startDate)
+    ? filters.startDate
+    : initialFilters.startDate;
+
+  _filters.endDate = isDate(filters.endDate)
+    ? filters.endDate
+    : initialFilters.endDate;
+
+  const _colOrderMap = invert(colOrderMap);
+  let _colOrder = null;
+  if (filters.colOrder) {
+    _colOrder = Array.from(filters.colOrder).reduce((acc, key) => {
+      if (_colOrderMap[key] === undefined || acc === false) {
+        return false;
+      }
+      acc.push(_colOrderMap[key]);
+      return acc;
+    }, []);
+  }
+
+  _filters.colOrder = _colOrder || initialFilters.colOrder;
+
+  const colVisibility = Number(filters.colVisible);
+  let isVisible = null;
+  if (!isNaN(colVisibility) && colVisibility > 0) {
+    isVisible = Object.keys(initialColVisibility).reduce((acc, col) => {
+      acc[col] =
+        initialColVisibility[col] !== undefined &&
+        (colVisibility & colVisibilityMap[col]) === colVisibilityMap[col];
+      return acc;
+    }, {});
+  }
+
+  _filters.isVisible = isVisible || initialFilters.isVisible;
+
+  return _filters;
+};
+
+const composeReducer = (reducerOne, reducerTwo) => (state, action) =>
+  reducerTwo(reducerOne(state, action), action);
+
+/**
+ * A Custom hook to transform the filters when reading from or writing to query string
+ *
+ * @returns {Array} An array containing a reference to the value and a function to set the value
+ */
+const useFilterQueryParam = () => {
+  let [filterParams, setFilterParams] = useSearchParams();
+  let params = {};
+
+  ["startDate", "endDate", "colOrder", "colVisible"].forEach((val) => {
+    params[val] = filterParams.get(val);
+  });
+
+  let value = useMemo(() => bloatFilters(params), [params]);
+
+  /**
+   * Sets the new value to the search params
+   *
+   * @param {any} newValue
+   * @param {{replace: boolean, state: any}} options
+   *
+   * @returns void
+   */
+  let setValue = useCallback(
+    (newFilters, options) => {
+      let _newFilters = flattenFilters(newFilters);
+      _newFilters = new URLSearchParams(_newFilters);
+      setFilterParams(_newFilters, options);
+    },
+    [filterParams, setFilterParams]
+  );
+
+  return [value, setValue];
+};
+
+export { getColumnConfigurer, composeReducer, useFilterQueryParam };

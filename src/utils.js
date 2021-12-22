@@ -20,3 +20,28 @@ export function classNames() {
 
   return _classes.join(' ');
 }
+
+export function invert(obj) {
+  const _obj = {};
+
+  for (let key in obj) {
+    _obj[obj[key]] = key;
+  }
+  
+  return _obj;
+}
+
+export function reorderArray(arr, item, source, dest) {
+  const newArr = Array.from(arr);
+  newArr.splice(source, 1);
+  newArr.splice(dest, 0, item);
+
+  return newArr;
+}
+
+export function isDate(date) {
+  if (!date) return false;
+
+  const dt = new Date(date);
+  return (dt instanceof Date) && !isNaN(dt.getTime());
+}

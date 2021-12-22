@@ -8,6 +8,7 @@ import * as api from './api';
 import * as actions from './actions';
 import reducers from './reducers';
 import useIconContextProvider from "./hooks/useIconContextProvider";
+import useQueryParam from "./hooks/useQueryParam";
 import Layout from "./components/ui/Layout";
 import ClearFix from "./components/ui/ClearFix";
 import ButtonBadge from "./components/ui/ButtonBadge";
@@ -16,10 +17,10 @@ import ColControl from "./components/ui/ColControl";
 import Table from "./components/ui/table";
 import {
   getColumnConfigurer,
-  initialFilters,
-  formatDateRange,
-  reorderArray,
+  composeReducer,
 } from "./helpers";
+import { formatDateRange } from './helpers/formatters';
+import { reorderArray } from './utils';
 
 function App() {
   const IconContextProvider = useIconContextProvider({
@@ -27,11 +28,20 @@ function App() {
     size: "1.25rem",
   });
 
+  const [filtersFromQuery, setFilters] = useQueryParam();
+  const composedReducers = composeReducer(
+    reducers,
+    (filters, actions) => {
+      setFilters(filters, { replace: true });
+      return filters;
+    }
+  );
+
   const [reload, setReload] = useState(0);
   const [optionsExpanded, setOptionsExpanded] = useState(false);
   const [apps, setApps] = useState([]);
   const [analytics, setAnalytics] = useState([]);
-  const [filters, dispatch] = useReducer(reducers, initialFilters);
+  const [filters, dispatch] = useReducer(composedReducers, filtersFromQuery);
 
   useEffect(() => {
     api
