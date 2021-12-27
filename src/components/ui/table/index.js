@@ -53,24 +53,26 @@ const Table = ({columns, data, colOrder, isVisible}) => {
       <table className="table w-100">
         <thead className="fw-normal ">
           <tr>
-            {orderedVisibleColumns.map(key => (
+            {orderedVisibleColumns.map((key) => (
               <Thead
                 key={key}
                 title={columns[key].title}
-                value={columns[key].formatSummary(state.summary[key])} />
+                value={columns[key].formatSummary(state.summary[key])}
+                align={columns[key].align}
+              />
             ))}
           </tr>
         </thead>
         <tbody>
-          {
-            state.data.map((row, idx) => (
-              <tr key={idx}>
-                {orderedVisibleColumns.map(key => (
-                  <td key={key}>{columns[key].formatData(row[key])}</td>
-                ))}
-              </tr>
-            ))
-          }
+          {state.data.map((row, idx) => (
+            <tr key={idx}>
+              {orderedVisibleColumns.map((key) => (
+                <td style={{ textAlign: columns[key].align }} key={key}>
+                  {columns[key].formatData(row[key])}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

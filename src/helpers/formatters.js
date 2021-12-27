@@ -61,3 +61,5 @@ export const suffixNumber = (number) => {
   }
   return _number;
 };
+
+export const formatNumber = new Intl.NumberFormat().format

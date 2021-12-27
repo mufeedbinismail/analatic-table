@@ -8,19 +8,22 @@ import * as api from './api';
 import * as actions from './actions';
 import reducers from './reducers';
 import useIconContextProvider from "./hooks/useIconContextProvider";
-import useQueryParam from "./hooks/useQueryParam";
+import useFilterQueryParam from "./hooks/useFilterQueryParam";
 import Layout from "./components/ui/Layout";
 import ClearFix from "./components/ui/ClearFix";
 import ButtonBadge from "./components/ui/ButtonBadge";
 import Collapse from "./components/ui/Collapse";
 import ColControl from "./components/ui/ColControl";
 import Table from "./components/ui/table";
+import DateRangeFilterForm from "./components/ui/DateRangeFilterForm";
 import {
-  getColumnConfigurer,
+  getColumnConfiguration,
   composeReducer,
+  cloneFilters
 } from "./helpers";
 import { formatDateRange } from './helpers/formatters';
 import { reorderArray } from './utils';
+import useToggle from "./hooks/useToggle";
 
 function App() {
   const IconContextProvider = useIconContextProvider({
@@ -28,17 +31,20 @@ function App() {
     size: "1.25rem",
   });
 
-  const [filtersFromQuery, setFilters] = useQueryParam();
+  const [filtersFromQuery, setFilters] = useFilterQueryParam();
   const composedReducers = composeReducer(
     reducers,
     (filters, actions) => {
-      setFilters(filters, { replace: true });
+      setFilters(cloneFilters(filters), {
+        replace: true,
+        state: {}
+      });
       return filters;
     }
   );
 
-  const [reload, setReload] = useState(0);
-  const [optionsExpanded, setOptionsExpanded] = useState(false);
+  const [isOptionsExpanded, toggleOptions] = useToggle(false);
+  const [isDateRangeExpanded, toggleDateRange] = useToggle(false);
   const [apps, setApps] = useState([]);
   const [analytics, setAnalytics] = useState([]);
   const [filters, dispatch] = useReducer(composedReducers, filtersFromQuery);
@@ -53,12 +59,9 @@ function App() {
       .getReport(filters.startDate, filters.endDate)
       .then((res) => setAnalytics(res.data))
       .catch((err) => console.log(err));
-  }, [reload]);
+  }, [filters.startDate, filters.endDate]);
 
-  const toggleOptions = () => {
-    setOptionsExpanded(!optionsExpanded);
-  };
-  const columns = useMemo(getColumnConfigurer(apps), []);
+  const columns = useMemo(() => getColumnConfiguration(apps), [apps]);
   const onDragEnd = (result) => {
     const { destination, source, draggableId } = result;
 
@@ -90,7 +93,7 @@ function App() {
             icon={<FaCalendarAlt />}
             float="start"
             text={formatDateRange(filters.startDate, filters.endDate)}
-            onClick={() => setReload(reload + 1)}
+            onClick={toggleDateRange}
           />
 
           <ButtonBadge
@@ -100,9 +103,15 @@ function App() {
             onClick={toggleOptions}
           />
         </ClearFix>
+        <Collapse visible={isDateRangeExpanded}>
+          <DateRangeFilterForm
+            dispatch={dispatch}
+            startDate={filters.startDate}
+            endDate={filters.endDate} />
+        </Collapse>
         <DragDropContext onDragEnd={onDragEnd}>
           <Collapse
-            visible={optionsExpanded}
+            visible={isOptionsExpanded}
             className="mb-4 p-3 rounded border overflow-hidden"
           >
             <h4 className="mb-3">Dimensions and Metrics</h4>
@@ -135,7 +144,6 @@ function App() {
             </Droppable>
           </Collapse>
         </DragDropContext>
-        .
       </IconContextProvider>
 
       <Table

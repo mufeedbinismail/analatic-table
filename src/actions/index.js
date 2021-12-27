@@ -15,3 +15,10 @@ export const setColumnOrder = dispatch => order => (
         payload: {order}
     })
 );
+
+export const setDateRange = dispatch => (dateRange) => (
+    dispatch({
+        type: actionType.CHANGED_DATE,
+        payload: {...dateRange}
+    })
+)

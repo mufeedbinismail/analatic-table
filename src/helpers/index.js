@@ -1,12 +1,11 @@
-import React, { useCallback, useMemo } from "react";
 import { IoPieChartOutline } from "react-icons/io5";
-import { useSearchParams } from "react-router-dom";
 
 import {
   formatDate,
   formatCurrency,
   formatPercentage,
-  suffixNumber
+  suffixNumber,
+  formatNumber
 } from './formatters';
 import {
   sum,
@@ -53,79 +52,85 @@ const colVisibilityMap = Object.keys(initialColVisibility)
   {}
 )
 
-
-const getColumnConfigurer = (apps) => {
-  return () => ({
-    date: {
-      title: "Date",
-      getData: (row) => row.date,
-      formatData: formatDate,
-      getSummary: count,
-      formatSummary: suffixNumber,
-    },
-    appName: {
-      title: "App",
-      getData: (row) => apps.find((app) => app.app_id == row.app_id)?.app_name,
-      formatData: (data) => (
-        <span>
-          <IoPieChartOutline color="orange" size="1.25rem" className="me-2" />
-          {data}
-        </span>
-      ),
-      getSummary: count,
-      formatSummary: suffixNumber,
-    },
-    requests: {
-      title: "Request",
-      getData: (row) => row.requests,
-      formatData: suffixNumber,
-      getSummary: sum,
-      formatSummary: suffixNumber,
-    },
-    responses: {
-      title: "Response",
-      getData: (row) => row.responses,
-      formatData: suffixNumber,
-      getSummary: sum,
-      formatSummary: suffixNumber,
-    },
-    revenue: {
-      title: "Revenue",
-      getData: (row) => row.revenue,
-      formatData: formatCurrency,
-      getSummary: sum,
-      formatSummary: formatCurrency,
-    },
-    fillRate: {
-      title: "Fill Rate",
-      getData: (row) => row.requests / row.responses,
-      formatData: formatPercentage,
-      getSummary: avg,
-      formatSummary: formatPercentage,
-    },
-    impressions: {
-      title: "Impressions",
-      getData: (row) => row.impressions,
-      formatData: suffixNumber,
-      getSummary: sum,
-      formatSummary: suffixNumber,
-    },
-    clicks: {
-      title: "Clicks",
-      getData: (row) => row.clicks,
-      formatData: suffixNumber,
-      getSummary: sum,
-      formatSummary: suffixNumber,
-    },
-    ctr: {
-      title: "CTR",
-      getData: (row) => row.clicks / row.impressions,
-      formatData: formatPercentage,
-      getSummary: sum,
-      formatSummary: formatPercentage,
-    },
-  });
-};
+const getColumnConfiguration = (apps) => ({
+  date: {
+    title: "Date",
+    align: 'left',
+    getData: (row) => row.date,
+    formatData: formatDate,
+    getSummary: count,
+    formatSummary: suffixNumber,
+  },
+  appName: {
+    title: "App",
+    align: 'left',
+    getData: (row) => apps.find((app) => app.app_id == row.app_id)?.app_name,
+    formatData: (data) => (
+      <span>
+        <IoPieChartOutline color="orange" size="1.25rem" className="me-2" />
+        {data}
+      </span>
+    ),
+    getSummary: count,
+    formatSummary: suffixNumber,
+  },
+  requests: {
+    title: "Request",
+    align: 'right',
+    getData: (row) => row.requests,
+    formatData: formatNumber,
+    getSummary: sum,
+    formatSummary: suffixNumber,
+  },
+  responses: {
+    title: "Response",
+    align: 'right',
+    getData: (row) => row.responses,
+    formatData: formatNumber,
+    getSummary: sum,
+    formatSummary: suffixNumber,
+  },
+  revenue: {
+    title: "Revenue",
+    align: 'right',
+    getData: (row) => row.revenue,
+    formatData: formatCurrency,
+    getSummary: sum,
+    formatSummary: formatCurrency,
+  },
+  fillRate: {
+    title: "Fill Rate",
+    align: 'right',
+    getData: (row) => (row.requests / row.responses),
+    formatData: formatPercentage,
+    getSummary: avg,
+    formatSummary: formatPercentage,
+  },
+  impressions: {
+    title: "Impressions",
+    align: 'right',
+    getData: (row) => row.impressions,
+    formatData: formatNumber,
+    getSummary: sum,
+    formatSummary: suffixNumber,
+  },
+  clicks: {
+    title: "Clicks",
+    align: 'right',
+    getData: (row) => row.clicks,
+    formatData: formatNumber,
+    getSummary: sum,
+    formatSummary: suffixNumber,
+  },
+  ctr: {
+    title: "CTR",
+    align: 'right',
+    getData: (row) => (row.clicks / row.impressions),
+    formatData: formatPercentage,
+    getSummary: avg,
+    formatSummary: formatPercentage,
+  },
+});
 
 const flattenFilters = (filters) => {
   const _filters = {};
@@ -183,42 +188,14 @@ const bloatFilters = (filters) => {
   return _filters;
 };
 
+const cloneFilters = (filters) => ({
+  startDate: filters.startDate,
+  endDate: filters.endDate,
+  colOrder: Array.from(filters.colOrder),
+  isVisible: {...filters.isVisible}
+})
+
 const composeReducer = (reducerOne, reducerTwo) => (state, action) =>
   reducerTwo(reducerOne(state, action), action);
 
-/**
- * A Custom hook to transform the filters when reading from or writing to query string
- *
- * @returns {Array} An array containing a reference to the value and a function to set the value
- */
-const useFilterQueryParam = () => {
-  let [filterParams, setFilterParams] = useSearchParams();
-  let params = {};
-
-  ["startDate", "endDate", "colOrder", "colVisible"].forEach((val) => {
-    params[val] = filterParams.get(val);
-  });
-
-  let value = useMemo(() => bloatFilters(params), [params]);
-
-  /**
-   * Sets the new value to the search params
-   *
-   * @param {any} newValue
-   * @param {{replace: boolean, state: any}} options
-   *
-   * @returns void
-   */
-  let setValue = useCallback(
-    (newFilters, options) => {
-      let _newFilters = flattenFilters(newFilters);
-      _newFilters = new URLSearchParams(_newFilters);
-      setFilterParams(_newFilters, options);
-    },
-    [filterParams, setFilterParams]
-  );
-
-  return [value, setValue];
-};
-
-export { getColumnConfigurer, composeReducer, useFilterQueryParam };
+export { getColumnConfiguration, composeReducer, bloatFilters, flattenFilters, cloneFilters };
